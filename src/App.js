@@ -1,76 +1,128 @@
 import PocketBase from 'pocketbase';
-import React, { useEffect, useState } from 'react';
-import logo from './logo.svg';
-// import './App.css';
+import React, { useState } from 'react';
+import './App.css'; // Make sure to import your CSS file
+
+const pb = new PocketBase('http://127.0.0.1:8090');
 
 function App() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    passwordConfirm: '',
+    emailVisibility: true,
+    verified: false,
+  });
+  const [users, setUsers] = useState([]); // State to hold user records
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch(' http://127.0.0.1:8090/api/collections/Username/records');
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const result = await response.json();
-        setData(result);
-      } catch (error) {
-        setError(error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const record = await pb.collection('users').create(formData);
+      console.log('Record created:', record);
+      setUsers((prevUsers) => [...prevUsers, record]); // Add new user to the state
+      // Reset form
+      setFormData({
+        name: '',
+        email: '',
+        password: '',
+        passwordConfirm: '',
+        emailVisibility: true,
+        verified: false,
+      });
+    } catch (error) {
+      setError(error);
+    }
+  };
 
-    fetchData();
-
-
-
-    //post
-    const pb = new PocketBase('http://127.0.0.1:8090');
-    const data = {
-      "employee_name": "ali",
-      "employee_email": "ali@example.com"
-    };
-
-    // del
-    // const b = new PocketBase('http://127.0.0.1:8090');
-    // b.collection('org').delete('oq2ufgdt72dln16');
-
-
-
-    const record = pb.collection('org').create(data);
-    //delete
-    // const p = new PocketBase('http://127.0.0.1:8090');
-    // pb.collection('Username').delete('RECORD_ID');
-  }, []);
+  const handleDelete = async (id) => {
+    try {
+      await pb.collection('users').delete(id);
+      console.log('Record deleted:', id);
+      // Remove the deleted user from the state
+      setUsers((prevUsers) => prevUsers.filter(user => user.id !== id));
+    } catch (error) {
+      setError(error);
+    }
+  };
 
   return (
     <div className="App">
       <header className="App-header">
-        {/* <img src={logo} className="App-logo" alt="logo" /> */}
-        <p>
-          {/* Edit <code>src/App.js</code> and save to reload. */}
-        </p>
-        {loading && <p>Loading...</p>}
+        <h1>Create New User</h1>
         {error && <p>Error: {error.message}</p>}
-        {data && (
-          <div>
-            <h2>Fetched Data:</h2>
-            <pre>{JSON.stringify(data, null, 2)}</pre>
-          </div>
-        )}
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {/* Learn React with me */}
-        </a>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            name="name"
+            placeholder="Name"
+            value={formData.name}
+            onChange={handleChange}
+            required
+          />
+          <input
+            type="email"
+            name="email"
+            placeholder="Email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+          />
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+          />
+          <input
+            type="password"
+            name="passwordConfirm"
+            placeholder="Confirm Password"
+            value={formData.passwordConfirm}
+            onChange={handleChange}
+            required
+          />
+          <label>
+            <input
+              type="checkbox"
+              name="emailVisibility"
+              checked={formData.emailVisibility}
+              onChange={handleChange}
+            />
+            Email Visibility
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              name="verified"
+              checked={formData.verified}
+              onChange={handleChange}
+            />
+            Verified
+          </label>
+          <button type="submit">Create User</button>
+        </form>
+
+        <h2>Existing Users</h2>
+        <ul>
+          {users.map((user) => (
+            <li key={user.id}>
+              {user.name} ({user.email})
+              <button onClick={() => handleDelete(user.id)}>Delete</button>
+            </li>
+          ))}
+        </ul>
       </header>
     </div>
   );
